@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
+#include <LiquidCrystal.h>
 
 /*
 * Macros
@@ -24,27 +25,50 @@
 /*
 * Globals
 */
-unsigned long duration;
+
+unsigned long durationA,durationB, durationC;
 unsigned int distanceInInchesSensorA;
 unsigned int distanceInInchesSensorB;
 unsigned int distanceInInchesSensorC;
+int light = 0;
+int state = 0;
+LiquidCrystal lcd(30, 31, 22, 23, 24, 25, 26, 27, 28, 29);
+
+float start, finished;
+float elapsed, time;
+float circMetric=2.093; // wheel circumference (in meters)
+float speedk;    // holds calculated speed vales in metric
 
 /*
 * Support Functions
 */
 
 void setPorts() {
-  // LED OUT
-  DDRL |= BIT6;
+  
+  DDRL |= BIT6; // LED OUT sensors
+  
+  pinMode(36, OUTPUT); // LED OUT photoresistor
+  pinMode(A0, INPUT); // photoresistor
+
+  pinMode(18, INPUT); // hall effect sensor
+  
 
   // LCD OUT
   DDRC |= BIT7;       // RS
   DDRC |= BIT6;       // E
   DDRA = 0xff;        // D0 - D7
 
-  // Distance 
+  // Distance Sensor A
   DDRE |= BIT5;       // Trig OUT
   DDRE &= ~BIT4;      // Echo IN
+
+  // Distance Sensor B
+  DDRG |= BIT5;       // Trig OUT
+  DDRE &= ~BIT3;      // Echo IN
+
+  // Distance Sensor C
+  DDRH |= BIT3;       // Trig OUT
+  DDRH &= ~BIT4;      // Echo IN
 }
 
 void enableLCD() {
@@ -67,7 +91,7 @@ void setdata(int data) {
   _delay_ms(5);
 }
 
-void writeLCD(char* word) {
+void writeLCD(const char* word) {
     unsigned int index;
     for(index = 0; index < strlen(word); index++) {
         setdata(word[index]);
@@ -75,39 +99,145 @@ void writeLCD(char* word) {
 }
 
 void initLCD() {
-  _delay_ms(100);
-  setcmd(_FUNCTION_SET);
-  setcmd(_DISPLAY_ON);
-  setcmd(_DISPLAY_CLEAR);
-  setcmd(_ENTRY_MODE);
+//  _delay_ms(50);
+//  setcmd(_FUNCTION_SET);
+//  setcmd(_DISPLAY_ON);
+//  setcmd(_DISPLAY_CLEAR);
+//  setcmd(_ENTRY_MODE);
+
+  lcd.begin(16, 2);
+  lcd.print("Hello");
 }
 
 void sampleDistanceSensors() {
+  // Sensor A
   PORTE &= ~BIT5;
   _delay_ms(2);
   PORTE |= BIT5;
   _delay_ms(10);
   PORTE &= ~BIT5;
-  durationA = pulseIn(2, HIGH);    // 2 = E4 Echo In
-  distanceInInchesA = durationA * 0.0133 / 2;
-  if(distanceInInchesA < 6 || distanceInInchesB < 6 || distanceInInchesC < 6) {
+
+  durationA = pulseIn(2, HIGH);    // 2 = E4 Echo In, ms
+  distanceInInchesSensorA = durationA * 0.0133 / 2;
+
+  if(distanceInInchesSensorA < 6) {
+    PORTL |= BIT6;        // Turn ON all the Leds connected to PORTC
+    _delay_ms(100);      // Wait for some time
+    PORTL &= ~BIT6;        // Turn OFF all the Leds connected to PORTC
+    _delay_ms(100);      // Wait for some time
+    lcd.setCursor(0,4);
+//    lcd.print(distanceInInchesSensorA);
+    lcd.print(" WARNING ->");
+  }
+
+  // Sensor B
+  PORTG &= ~BIT5;
+  _delay_ms(2);
+  PORTG |= BIT5;
+  _delay_ms(10);
+  PORTG &= ~BIT5;
+
+  durationB = pulseIn(5, HIGH);    // 5 = E3 Echo In, ms
+  distanceInInchesSensorB = durationB * 0.0133 / 2;
+
+  if(distanceInInchesSensorB < 6) {
     PORTL |= BIT6;        // Turn ON all the Leds connected to PORTC
     _delay_ms(100);      // Wait for some time
     PORTL &= ~BIT6;        // Turn OFF all the Leds connected to PORTC
     _delay_ms(100);      // Wait for some time
   }
+
+  // Sensor C
+  PORTH &= ~BIT3;
+  _delay_ms(2);
+  PORTH |= BIT3;
+  _delay_ms(10);
+  PORTH &= ~BIT3;
+
+  durationC = pulseIn(7, HIGH);    // 7 = H4 Echo In, ms
+  distanceInInchesSensorC = durationC * 0.0133 / 2;
+  
+  if(distanceInInchesSensorC < 6) {
+    PORTL |= BIT6;        // Turn ON all the Leds connected to PORTC
+    PORTB |= BIT4;
+    _delay_ms(100);      // Wait for some time
+    PORTL &= ~BIT6;        // Turn OFF all the Leds connected to PORTC
+    _delay_ms(100);      // Wait for some time
+  }
+  else{
+    lcd
+  }
 }
 
+ void photoresistor(){
+  int DutyC = 255;
+   light = analogRead(A0);
+   Serial.println(light); // print current light value
+   if(light <= 400) {
+        digitalWrite(36, HIGH);
+   }
+    else {
+        digitalWrite(36,LOW); // Turn left LED on
+//        Serial.println("hello");
+    }
+   
+ }
+
+ void speedCalc() {
+  if((millis()-start)>100) // 100 millisec debounce
+    {
+    //calculate elapsed
+    elapsed=millis()-start;
+
+    //reset start
+    start=millis();
+  
+    //calculate speed in km/h
+    speedk=(3600*circMetric)/elapsed; 
+
+    Serial.println(speedk);
+//    char str[3];
+//    sprintf(str, "%d", speedk);
+//    setcmd(_DISPLAY_CLEAR);
+//    writeLCD(str);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      
+      lcd.print(speedk);
+      lcd.setCursor(5,0);
+      lcd.print("km/h");
+      
+ }
+}
+
+ void speedometer() {
+  attachInterrupt(5, speedCalc, RISING); // interrupt called when sensors sends digital 40 high (every wheel rotation)
+
+  //start now (it will be reset by the interrupt after calculating revolution time)
+  start=millis();
+ }
 /*
 * Main
 */
 
 void setup() {
+ 
+  Serial.begin(9600);
   setPorts();
+  speedometer();
   initLCD();
-  writeLCD("Hello World!");
+  
 }
 
 void loop() {
-  sampleDistanceSensor();
+  sampleDistanceSensors();
+  photoresistor();
+
+//  state = digitalRead(13);
+//  Serial.println(state);
+  
+//  setcmd(_DISPLAY_CLEAR);
+//  char str[10];
+//  sprintf(str, "%d", durationA);
+//  writeLCD(str);
 }
