@@ -30,9 +30,6 @@
 * Globals
 */
 
-// LCD object init
-LiquidCrystal lcd(RS, E, D0, D1, D2, D3, D4, D5, D6, D7);
-
 // Distance Sensor Var's
 unsigned long durationA,durationB, durationC;
 unsigned int distanceInInchesSensorA, distanceInInchesSensorB, distanceInInchesSensorC;
@@ -83,82 +80,82 @@ void setPorts() {
   pinMode(7, INPUT);
 }
 
+// Set lcd object to 8-bit mode
+LiquidCrystal lcd(RS, E, D0, D1, D2, D3, D4, D5, D6, D7);
+
 void initLCD() {
-  lcd.begin(16, 2);
-  lcd.setCursor(5, 0);
-  lcd.print("HELLO");
+  lcd.begin(16, 2);       // Init LCD in 16 characters and 2 lines mode
+  lcd.setCursor(5, 0);    // Set cursor to pos 5
+  lcd.print("HELLO");     // Print greeting
   _delay_ms(500);
-  lcd.clear();
+  lcd.clear();            // Clear display
 }
 
 void sampleDistanceSensors() {
-  // Sensor A
-  PORTE &= ~BIT5;
+  /*                        Sensor A                        */
+  digitalWrite(3, LOW);
   _delay_ms(2);
-  PORTE |= BIT5;
+  digitalWrite(3, HIGH);
   _delay_ms(10);
-  PORTE &= ~BIT5;
+  digitalWrite(3, LOW);
 
-  durationA = pulseIn(2, HIGH);    // 2 = E4 Echo In, ms
+  durationA = pulseIn(2, HIGH);
   distanceInInchesSensorA = durationA * 0.0133 / 2;
 
-  if(distanceInInchesSensorA < 36) {
-    // digitalWrite(11, HIGH); // buzzer
-    PORTL |= BIT6;        // Turn ON all the Leds connected to PORTC
-    _delay_ms(100);      // Wait for some time
-    PORTL &= ~BIT6;        // Turn OFF all the Leds connected to PORTC
-    _delay_ms(100);      // Wait for some time
-    lcd.setCursor(4,1);
-//    lcd.print(distanceInInchesSensorA);
-    
+  if(distanceInInchesSensorA < 12) {
+    // digitalWrite(11, HIGH);         // Turn on Buzzer
+    digitalWrite(43, HIGH);         // Blink LED
+    _delay_ms(100);
+    digitalWrite(43, LOW);
+    _delay_ms(100);
+
+    lcd.setCursor(4,1);             // Display LCD
     lcd.print("WARNING ->");
     lcd.setCursor(0, 1);
     lcd.print("   ");
   }
 
-  // Sensor B
-  PORTG &= ~BIT5;
+  /*                        Sensor B                        */
+  digitalWrite(4, LOW);
   _delay_ms(2);
-  PORTG |= BIT5;
+  digitalWrite(4, HIGH);
   _delay_ms(10);
-  PORTG &= ~BIT5;
+  digitalWrite(4, LOW);
 
-  durationB = pulseIn(5, HIGH);    // 5 = E3 Echo In, ms
+  durationB = pulseIn(5, HIGH);
   distanceInInchesSensorB = durationB * 0.0133 / 2;
 
-  if(distanceInInchesSensorB < 36) {
-    // digitalWrite(11, HIGH); // buzzer
-
-    PORTL |= BIT6;        // Turn ON all the Leds connected to PORTC
-    _delay_ms(100);      // Wait for some time
-    PORTL &= ~BIT6;        // Turn OFF all the Leds connected to PORTC
-    _delay_ms(100);      // Wait for some time
+  if(distanceInInchesSensorB < 12) {
+    // digitalWrite(11, HIGH);         // Turn on Buzzer
+    digitalWrite(43, HIGH);         // Blink LED
+    _delay_ms(100);
+    digitalWrite(43, LOW);
+    _delay_ms(100);
     
-    lcd.setCursor(0,1);
+    lcd.setCursor(0,1);             // Display LCD
     lcd.print(" <- WARNING");
     lcd.setCursor(12, 1);
     lcd.print("   ");
   }
 
-  // Sensor C
-  PORTH &= ~BIT3;
+  /*                        Sensor C                        */
+  digitalWrite(6, LOW);
   _delay_ms(2);
-  PORTH |= BIT3;
+  digitalWrite(6, HIGH);
   _delay_ms(10);
-  PORTH &= ~BIT3;
+  digitalWrite(6, LOW);
 
   durationC = pulseIn(7, HIGH);    // 7 = H4 Echo In, ms
   distanceInInchesSensorC = durationC * 0.0133 / 2;
   
   if(distanceInInchesSensorC < 36) {
-    // digitalWrite(11, HIGH); // buzzer
-    PORTL |= BIT6;        // Turn ON all the Leds connected to PORTC
-    PORTB |= BIT4;
-    _delay_ms(100);      // Wait for some time
-    PORTL &= ~BIT6;        // Turn OFF all the Leds connected to PORTC
-    _delay_ms(100);      // Wait for some time
+    // digitalWrite(11, HIGH);         // Turn on Buzzer
+    digitalWrite(43, HIGH);         // Blink LED
+    _delay_ms(100);
+    digitalWrite(43, LOW);
+    _delay_ms(100);
 
-    lcd.setCursor(4,1);
+    lcd.setCursor(4,1);             // Display LCD
     lcd.print("WARNING");
     lcd.setCursor(12, 1);
     lcd.print("   ");
@@ -166,60 +163,56 @@ void sampleDistanceSensors() {
     lcd.print("   ");
   }
 
-  if(distanceInInchesSensorA > 36 && distanceInInchesSensorB > 36 && distanceInInchesSensorC > 36) {
+  // Clear LCD if none of the sensors detect an object
+  if(distanceInInchesSensorA > 12 && distanceInInchesSensorB > 12 && distanceInInchesSensorC > 36) {
     lcd.setCursor(0, 1);
     lcd.print("                ");
   }
 }
 
  void photoresistor(){
-  int DutyC = 255;
-   light = analogRead(A0);
-  //  Serial.println(light); // print current light value
+   light = analogRead(A0);        // Read ADC value
    if(light <= 300) {
-        digitalWrite(36, HIGH);
+        digitalWrite(36, HIGH);   // Turn ON LED
         lcd.setCursor(0,1);
-        lcd.print("N");  
+        lcd.print("LOW LIGHT");   // Display Warning
    }
     else {
-        digitalWrite(36,LOW); // Turn left LED on
+        digitalWrite(36, LOW);    // Turn OFF LED
         lcd.setCursor(0,1);
-        lcd.print(" ");
+        lcd.print("         ");   // Clear Display
     }
  }
 
- void speedCalc() {
+ void speedCalc() {           // ISR Function
    current = millis();
-   elapsed= current -start;
+   elapsed = current - start;
 
-  if(elapsed > 100) // 100 millisec debounce
-    {
-    //calculate elapsed
-    Serial.println(current);
-    Serial.println(elapsed);
-    start= current;  //reset start
-    speedk=(3600*circTire)/elapsed; //calculate speed in km/h
+  if(elapsed > 100) {         // Allow at least 100 ms between samples
+    start = current;          // Reset Start
+    speedk = (3600 * circTire) / elapsed; // Calculate speed in km/h
 
-    lcd.setCursor(0,0);
+    lcd.setCursor(0, 0);      // Display speed in LCD
     lcd.print("Vel:");
-    lcd.setCursor(5,0);
+    lcd.setCursor(5, 0);
     lcd.print(speedk);
-    lcd.setCursor(10,0);
+    lcd.setCursor(10, 0);
     lcd.print("km/h");     
  }
 
  }
 
+ // Assign the function to be used as ISR to interrupt #5, triggered with the rising edge
  void speedometer() {
-  attachInterrupt(5, speedCalc, RISING); // interrupt called when sensors sends digital 40 high (every wheel rotation)
-  
-  //start now (it will be reset by the interrupt after calculating revolution time)
-  start=millis();
+  attachInterrupt(5, speedCalc, RISING);
+  start = millis();
  }
 
- void timer(){ // checks if there any magnet in x amount of seconds
-  if((millis()- current) > 2000 && (millis()- current) < 2500){ // checks if ~2 seconds passed;
-    speedk = 0;
+
+ void timer(){
+  // Checks if ~2 seconds passed
+  if((millis()- current) > 2000 && (millis()- current) < 2500){
+    speedk = 0;                     // Resets speed to 0 and clears display
     lcd.setCursor(0,0);
     lcd.print("                                  ");
     lcd.setCursor(0,0);
@@ -229,38 +222,31 @@ void sampleDistanceSensors() {
     lcd.setCursor(10,0);
     lcd.print("km/h");    
   }
-
  }
 
- void buttonstart(){
-  
+ void buttonStart(){
+    // Checks if pushbuttonStart is pressed
     button= digitalRead(45);
-   // check if the pushbutton is pressed
-  if (button == HIGH) {
-     
-     digitalWrite(11, HIGH);
-    // buttonstate = 1;
-  } 
-  else{
-    digitalWrite(11, LOW);
-  }
+    if (button == HIGH) {
+        digitalWrite(11, HIGH);   // Turn ON Buzzer
+    } else {
+        digitalWrite(11, LOW);    // Turn OFF Buzzer
+    }
 }
+
 /*
 * Main
 */
+
 void setup() {
- 
-  Serial.begin(9600);
   setPorts();
   speedometer();
   initLCD();
-  
 }
 
 void loop() {
   sampleDistanceSensors();
   photoresistor();
-  buttonstart();
+  buttonStart();
   timer();
-
 }
